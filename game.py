@@ -13,8 +13,8 @@ class Game:
     def refresh(self):
         pass
 
-    def game_container(self):
-        pass
+    def game_container(self) -> WebElement:
+        return self.driver.find_element_by_css_selector("body")
 
 
 class Game2048(Game):
@@ -22,6 +22,3 @@ class Game2048(Game):
 
     def refresh(self):
         self.driver.find_element_by_class_name("restart-button").click()
-
-    def game_container(self) -> WebElement:
-        return self.driver.find_element_by_css_selector("body")
