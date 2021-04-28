@@ -34,10 +34,10 @@ class Network:
                              input_shape=input_shape,
                              activation=activation,
                              # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
-                             kernel_initializer='random_normal',
+                             # kernel_initializer='random_normal',
                              # kernel_initializer='random_uniform',
                              # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
-                             bias_initializer='random_normal'
+                             # bias_initializer='random_normal'
                              # bias_initializer='random_uniform'
                              )
                        )
@@ -45,10 +45,10 @@ class Network:
             self.model.add(Dense(nb_neurons,
                                  activation=activation,
                                  # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
-                                 kernel_initializer='random_normal',
+                                 # kernel_initializer='random_normal',
                                  # kernel_initializer='random_uniform',
                                  # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
-                                 bias_initializer='random_normal'
+                                 # bias_initializer='random_normal'
                                  # bias_initializer='random_uniform'
                                  )
                            )
@@ -57,10 +57,10 @@ class Network:
         self.model.add(Dense(n_outputs,
                              activation="softmax",
                              # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
-                             kernel_initializer='random_normal',
+                             # kernel_initializer='random_normal',
                              # kernel_initializer='random_uniform',
                              # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
-                             bias_initializer='random_normal'
+                             # bias_initializer='random_normal'
                              # bias_initializer='random_uniform'
                              )
                        )

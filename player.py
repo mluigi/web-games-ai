@@ -63,7 +63,10 @@ class Player2048(Player):
         return int(best_score)
 
     def has_won(self):
-        return self.get_game_state()["won"]
+        has_won = False
+        if self.get_game_state() is not None:
+            has_won = self.get_game_state()["won"]
+        return has_won
 
     def get_game_state(self):
         try:
@@ -96,14 +99,16 @@ class Player2048(Player):
 
     def play(self):
         matrix = self.get_matrix()
-        max_games = 25
+        max_games = 100
         n_games = 0
-        while True:
+        while n_games < max_games:
             next_move = self.network.get_next_move_index(matrix)
             self.do_next_move(next_move)
             new_mat = self.get_matrix()
-            if (new_mat is not None and np.array_equal(matrix, new_mat)) or self.is_over():
-                # self.mutate()
+            if new_mat is not None and np.array_equal(matrix, new_mat):
+                self.mutate()
+                n_games += 1
+            elif self.is_over():
                 # n_games += 1
                 # self.station.restart()
                 break
