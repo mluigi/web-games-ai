@@ -12,8 +12,6 @@ class Station:
         self.driver = webdriver.Chrome(options=options)
         self.game = game
         game.set_driver(self.driver)
-
-    def start(self):
         self.driver.get(self.game.url)
 
     def restart(self):

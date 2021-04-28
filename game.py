@@ -18,7 +18,7 @@ class Game:
 
 
 class Game2048(Game):
-    url = "file:///{}/2048/index.html".format(os.path.dirname(os.path.realpath(__file__)))
+    url = f"file:///{os.path.dirname(os.path.realpath(__file__))}/2048/index.html"
 
     def refresh(self):
         self.driver.find_element_by_class_name("restart-button").click()

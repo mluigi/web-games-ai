@@ -2,48 +2,71 @@ import random
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.models import Sequential
 
 
 class Network:
 
-    def __init__(self, nn_params):
+    def __init__(self, nn_params=None):
+        if nn_params is None:
+            nn_params = {}
         self.accuracy = 0.
         self.nn_params = nn_params
         self.network = {}
         self.model = Sequential()
 
     def create_random(self):
-        """Create a random network."""
         for key in self.nn_params:
             self.network[key] = random.choice(self.nn_params[key])
 
     def create_random_model(self, n_outputs, input_shape):
-        self.create_random()
-
-        nb_layers = self.network['nb_layers']
-        nb_neurons = self.network['nb_neurons']
-        activation = self.network['activation']
+        # self.create_random()
+        minmax = 5
+        nb_layers = self.nn_params['nb_layers']
+        nb_neurons = self.nn_params['nb_neurons']
+        activation = self.nn_params['activation']
+        # self.model.add(BatchNormalization(
+        #     input_shape=input_shape,
+        #     batch_size=1))
         self.model.add(Dense(nb_neurons,
+                             batch_size=1,
                              input_shape=input_shape,
                              activation=activation,
-                             kernel_initializer=tf.keras.initializers.random_uniform(-1, 1),
-                             bias_initializer=tf.keras.initializers.random_uniform(-1, 1)))
-        # self.model.add(Flatten())
-        for i in range(nb_layers - 1):
+                             # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
+                             kernel_initializer='random_normal',
+                             # kernel_initializer='random_uniform',
+                             # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
+                             bias_initializer='random_normal'
+                             # bias_initializer='random_uniform'
+                             )
+                       )
+        for i in range(nb_layers):
             self.model.add(Dense(nb_neurons,
                                  activation=activation,
-                                 kernel_initializer=tf.keras.initializers.random_uniform(-1, 1),
-                                 bias_initializer=tf.keras.initializers.random_uniform(-1, 1)))
+                                 # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
+                                 kernel_initializer='random_normal',
+                                 # kernel_initializer='random_uniform',
+                                 # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
+                                 bias_initializer='random_normal'
+                                 # bias_initializer='random_uniform'
+                                 )
+                           )
 
+        self.model.add(Flatten())
         self.model.add(Dense(n_outputs,
                              activation="softmax",
-                             kernel_initializer=tf.keras.initializers.random_uniform(-1, 1),
-                             bias_initializer=tf.keras.initializers.random_uniform(-1, 1)))
+                             # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
+                             kernel_initializer='random_normal',
+                             # kernel_initializer='random_uniform',
+                             # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
+                             bias_initializer='random_normal'
+                             # bias_initializer='random_uniform'
+                             )
+                       )
         # self.model.compile(optimizer=optimizer)
 
-        self.model.summary()
+        # self.model.summary()
 
     def get_next_move_index(self, input_data):
         prediction = self.model(input_data)
