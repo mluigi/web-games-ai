@@ -5,11 +5,14 @@ from time import sleep
 import numpy as np
 import tensorflow.keras.backend as K
 from selenium.webdriver.common.keys import Keys
+from tensorflow.keras.models import clone_model
 
 from network import Network
 
 
 class Player:
+    network: Network
+
     def __init__(self, name, station, mutation_rate=0.1, network=None):
         self.station = station
         self.name = name
@@ -21,11 +24,10 @@ class Player:
         # }
         if network is None:
             nn_params = {
-                'nb_neurons': 32,
+                'nb_neurons': 8,
                 'nb_layers': 2,
-                'activation': ['relu', 'elu', 'tanh', 'sigmoid'],
+                'activation': 'sigmoid',
             }
-            nn_params['activation'] = random.choice(nn_params['activation'])
             self.network = Network(nn_params)
         else:
             self.network = network
@@ -41,7 +43,7 @@ class Player:
 
 
 class Player2048(Player):
-    def __init__(self, name, station, mutation_rate=0.05, network=None):
+    def __init__(self, name, station, mutation_rate=0.1, network=None):
         super().__init__(name, station, mutation_rate, network)
         self.highest_cell = 0
         # maybe change the way moves are added, maybe
@@ -99,18 +101,19 @@ class Player2048(Player):
 
     def play(self):
         matrix = self.get_matrix()
-        max_games = 100
+        max_games = 25
         n_games = 0
-        while n_games < max_games:
+        # while n_games < max_games:
+        while True:
             next_move = self.network.get_next_move_index(matrix)
             self.do_next_move(next_move)
             new_mat = self.get_matrix()
             if new_mat is not None and np.array_equal(matrix, new_mat):
-                self.mutate()
-                n_games += 1
-            elif self.is_over():
-                # n_games += 1
+                # self.mutate()
                 # self.station.restart()
+                # n_games += 1
+                break
+            elif self.is_over():
                 break
             else:
                 matrix = new_mat
@@ -121,9 +124,29 @@ class Player2048(Player):
 
     def generate_child_with(self, genitore2, station, name):
         network1 = self.network
-        network2 = genitore2.network
+        network2: Network = genitore2.network
         new_network = Network()
-        for i in range(len(network1.model.layers)):
-            new_network.model.add(random.choice(list([network1.model.layers[i], network2.model.layers[i]])))
+        new_network.model = clone_model(network1.model)
+        # for i in range(len(network1.model.layers)):
+        #     # new_network.model.add(random.choice(list([network1.model.layers[i], network2.model.layers[i]])))
+        #     layer1: Layer = network1.model.get_weights()
+        #     layer2 = network2.model.get_weights()
 
+        weights1 = network1.model.get_weights()
+        weights2 = network2.model.get_weights()
+        new_weights = []
+        for i, weight1 in enumerate(weights1):
+            weight2 = weights2[i]
+            new_weight = np.zeros(weight1.shape)
+            is_2d = new_weight.ndim > 1
+            for x in range(len(new_weight)):
+                if is_2d:
+                    for y in range(len(new_weight[x])):
+                        new_weight[x, y] = random.choice(list([weight1[x, y], weight2[x, y]]))
+                else:
+                    new_weight[x] = random.choice(list([weight1[x], weight2[x]]))
+
+            new_weights.append(new_weight)
+
+        new_network.model.set_weights(new_weights)
         return Player2048(name, station, network=new_network)

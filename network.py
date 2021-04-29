@@ -34,21 +34,21 @@ class Network:
                              input_shape=input_shape,
                              activation=activation,
                              # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
-                             # kernel_initializer='random_normal',
+                             kernel_initializer='random_normal',
                              # kernel_initializer='random_uniform',
                              # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
-                             # bias_initializer='random_normal'
+                             bias_initializer='random_normal'
                              # bias_initializer='random_uniform'
                              )
                        )
-        for i in range(nb_layers):
+        for i in range(nb_layers - 1):
             self.model.add(Dense(nb_neurons,
                                  activation=activation,
                                  # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
-                                 # kernel_initializer='random_normal',
+                                 kernel_initializer='random_normal',
                                  # kernel_initializer='random_uniform',
                                  # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
-                                 # bias_initializer='random_normal'
+                                 bias_initializer='random_normal'
                                  # bias_initializer='random_uniform'
                                  )
                            )
@@ -57,14 +57,13 @@ class Network:
         self.model.add(Dense(n_outputs,
                              activation="softmax",
                              # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
-                             # kernel_initializer='random_normal',
+                             kernel_initializer='random_normal',
                              # kernel_initializer='random_uniform',
                              # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
-                             # bias_initializer='random_normal'
+                             bias_initializer='random_normal'
                              # bias_initializer='random_uniform'
                              )
                        )
-        # self.model.compile(optimizer=optimizer)
 
         # self.model.summary()
 
@@ -77,10 +76,16 @@ class Network:
             weights = layer.get_weights()
             new_weights = []
             for weight in weights:
+                # new_weights.append(np.add(weight,
+                #                           np.random.uniform(
+                #                               -mutation_rate,
+                #                               mutation_rate,
+                #                               size=weight.shape)
+                #                           )
+                #                    )
                 new_weights.append(np.add(weight,
-                                          np.random.uniform(
-                                              -mutation_rate,
-                                              mutation_rate,
+                                          np.random.normal(
+                                              scale=mutation_rate,
                                               size=weight.shape)
                                           )
                                    )

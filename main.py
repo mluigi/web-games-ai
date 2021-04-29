@@ -31,6 +31,8 @@ while not has_somebody_won:
             executor.submit(player.play)
 
     sorted_players = [player for player in sorted(players, key=lambda x: x.get_best_score(), reverse=True)]
+    # sorted_players = [player for player in sorted(players, key=lambda x: x.highest_cell, reverse=True)]
+
     print(f"generation {generation}")
     print("\t\tScore\tHighest cell")
     for player in sorted_players:
@@ -57,7 +59,8 @@ while not has_somebody_won:
                 new_player = genitore1.generate_child_with(genitore2,
                                                            available_stations.pop(),
                                                            f"player {n_pops}")
-                new_player.mutate()
+                if random.random() < 0.33:
+                    new_player.mutate()
                 players.append(new_player)
                 n_pops += 1
         for player in players:
