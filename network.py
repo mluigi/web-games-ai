@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.layers import Dense, Flatten, InputLayer
 from tensorflow.keras.models import Sequential
 
 
@@ -29,19 +29,21 @@ class Network:
         # self.model.add(BatchNormalization(
         #     input_shape=input_shape,
         #     batch_size=1))
-        self.model.add(Dense(nb_neurons,
-                             batch_size=1,
-                             input_shape=input_shape,
-                             activation=activation,
-                             # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
-                             kernel_initializer='random_normal',
-                             # kernel_initializer='random_uniform',
-                             # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
-                             bias_initializer='random_normal'
-                             # bias_initializer='random_uniform'
-                             )
-                       )
-        for i in range(nb_layers - 1):
+        self.model.add(InputLayer(input_shape=input_shape))
+        self.model.add(Flatten())
+        # self.model.add(Dense(nb_neurons,
+        #                      batch_size=1,
+        #                      # input_shape=input_shape,
+        #                      activation=activation,
+        #                      # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
+        #                      kernel_initializer='random_normal',
+        #                      # kernel_initializer='random_uniform',
+        #                      # bias_initializer=tf.keras.initializers.random_uniform(-minmax, minmax)
+        #                      bias_initializer='random_normal'
+        #                      # bias_initializer='random_uniform'
+        #                      )
+        #                )
+        for i in range(nb_layers):
             self.model.add(Dense(nb_neurons,
                                  activation=activation,
                                  # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
@@ -53,7 +55,7 @@ class Network:
                                  )
                            )
 
-        self.model.add(Flatten())
+        # self.model.add(Flatten())
         self.model.add(Dense(n_outputs,
                              activation="softmax",
                              # kernel_initializer=tf.keras.initializers.random_uniform(-minmax, minmax),
@@ -77,16 +79,15 @@ class Network:
             new_weights = []
             for weight in weights:
                 # new_weights.append(np.add(weight,
-                #                           np.random.uniform(
-                #                               -mutation_rate,
-                #                               mutation_rate,
+                #                           np.random.normal(
+                #                               scale=mutation_rate,
                 #                               size=weight.shape)
                 #                           )
                 #                    )
-                new_weights.append(np.add(weight,
-                                          np.random.normal(
-                                              scale=mutation_rate,
-                                              size=weight.shape)
-                                          )
-                                   )
+                for idx, x in np.ndenumerate(weight):
+                    if random.random() < 0.2:
+                        weight[idx] = x + np.random.choice([-mutation_rate, mutation_rate])
+
+                new_weights.append(weight)
+
             layer.set_weights(new_weights)

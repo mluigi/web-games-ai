@@ -1,9 +1,7 @@
 import random
 from concurrent.futures import ThreadPoolExecutor
 
-from game import Game2048
-from player import Player2048
-from station import Station
+from player import Player2048Mem
 
 # logging.basicConfig(
 #     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -13,14 +11,22 @@ from station import Station
 # )
 
 
-n_players = 8
+n_players = 128
 stations = []
 players = []
 n_pops = 0
+# with ThreadPoolExecutor(max_workers=4) as executor:
+#     def init():
+#         global n_pops
+#         stations.append(Station(Game2048()))
+#         players.append(Player2048(f"player {n_pops}", stations[i]))
+#         n_pops += 1
+#
+#     for i in range(n_players):
+#         executor.submit(init)
 
 for i in range(n_players):
-    stations.append(Station(Game2048()))
-    players.append(Player2048(f"player {n_pops}", stations[i]))
+    players.append(Player2048Mem(f"player {n_pops}"))
     n_pops += 1
 
 has_somebody_won = False
@@ -33,9 +39,9 @@ while not has_somebody_won:
     sorted_players = [player for player in sorted(players, key=lambda x: x.get_best_score(), reverse=True)]
     # sorted_players = [player for player in sorted(players, key=lambda x: x.highest_cell, reverse=True)]
 
-    print(f"generation {generation}")
+    print(f"generation {generation} top 10")
     print("\t\tScore\tHighest cell")
-    for player in sorted_players:
+    for player in sorted_players[:10]:
         print(f"{player.name}\t{player.get_best_score()}\t{player.highest_cell}")
 
     winners = [player for player in players if player.has_won()]
@@ -48,7 +54,7 @@ while not has_somebody_won:
     else:
         retained_players = sorted_players[:int(n_players / 2)]
         removed_players = sorted_players[int(n_players / 2):]
-        available_stations = list(map(lambda x: x.station, removed_players))
+        # available_stations = list(map(lambda x: x.station, removed_players))
         players = retained_players
         while len(players) < n_players:
             genitore1 = random.randint(0, len(players) - 1)
@@ -57,7 +63,7 @@ while not has_somebody_won:
                 genitore1 = players[genitore1]
                 genitore2 = players[genitore2]
                 new_player = genitore1.generate_child_with(genitore2,
-                                                           available_stations.pop(),
+                                                           # available_stations.pop(),
                                                            f"player {n_pops}")
                 if random.random() < 0.33:
                     new_player.mutate()
@@ -65,7 +71,7 @@ while not has_somebody_won:
                 n_pops += 1
         for player in players:
             player.reset_best_score()
-            player.station.restart()
+        #            player.station.restart()
 
         generation += 1
 
