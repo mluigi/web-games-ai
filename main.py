@@ -114,8 +114,9 @@ def main():
                     n_pops += 1
 
             generation += 1
-            delete_all_files_in("chkpoints/prev")
-            move_all_files("chkpoints/lts", "chkpoints/prev")
+            if generation % 50 == 0:
+                delete_all_files_in("chkpoints/prev")
+                move_all_files("chkpoints/lts", "chkpoints/prev")
 
             with ThreadPoolExecutor(max_workers=50) as executor:
                 def reset(player_to_save):
