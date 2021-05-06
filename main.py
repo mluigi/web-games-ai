@@ -114,12 +114,13 @@ def main():
                     n_pops += 1
 
             generation += 1
+            delete_all_files_in("chkpoints/prev")
+            move_all_files("chkpoints/lts", "chkpoints/prev")
+
             with ThreadPoolExecutor(max_workers=50) as executor:
                 def reset(player_to_save):
                     player_to_save.reset_best_score()
                     if generation % 50 == 0:
-                        delete_all_files_in("chkpoints/prev")
-                        move_all_files("chkpoints/lts", "chkpoints/prev")
                         player_to_save.network.model.save(f"chkpoints/lts/{generation}-{player_to_save.name}.keras")
 
                 #   player.station.restart()
