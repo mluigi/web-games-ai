@@ -55,6 +55,7 @@ def main():
             network = Network()
             network.model = keras.models.load_model(f"chkpoints/lts/{filename}")
             players.append(Player2048Mem(player_name, network=network))
+        n_pops = max_n_players
         print("loaded saved players")
     else:
         for i in range(n_players):
