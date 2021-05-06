@@ -40,7 +40,7 @@ def main():
         os.makedirs("chkpoints/lts")
         for i in range(n_players):
             players.append(Player2048Mem(f"player {n_pops}"))
-        n_pops += 1
+            n_pops += 1
     elif os.path.exists("chkpoints/lts") and len(os.listdir("chkpoints/lts")) > 0:
         print("sasa")
         max_n_players = 0
@@ -60,7 +60,7 @@ def main():
     else:
         for i in range(n_players):
             players.append(Player2048Mem(f"player {n_pops}"))
-        n_pops += 1
+            n_pops += 1
 
     # with ThreadPoolExecutor(max_workers=4) as executor:
     #     def init():
@@ -115,12 +115,12 @@ def main():
 
             generation += 1
             with ThreadPoolExecutor(max_workers=50) as executor:
-                def reset(player):
-                    player.reset_best_score()
+                def reset(player_to_save):
+                    player_to_save.reset_best_score()
                     if generation % 50 == 0:
                         delete_all_files_in("chkpoints/prev")
                         move_all_files("chkpoints/lts", "chkpoints/prev")
-                        player.network.model.save(f"chkpoints/lts/{generation}-{player.name}.keras")
+                        player_to_save.network.model.save(f"chkpoints/lts/{generation}-{player_to_save.name}.keras")
 
                 #   player.station.restart()
 
