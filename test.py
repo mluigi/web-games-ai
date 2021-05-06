@@ -1,7 +1,8 @@
 # File for testing functions
 
-# from network import Network
-from player import Player2048Mem
+import os
 
-player = Player2048Mem("1")
-player.play()
+if not os.path.exists("chkpoints"):
+    os.mkdir("chkpoints")
+    os.makedirs("chkpoints/prev")
+    os.makedirs("chkpoints/lts")

@@ -222,15 +222,7 @@ class Player2048Mem:
             next_move = self.network.get_next_move_index(matrix)
             self.do_next_move(next_move)
             new_mat = self.get_matrix()
-            if new_mat is not None and np.array_equal(matrix, new_mat):
-                # self.mutate()
-                # self.station.restart()
-                # n_games += 1
-                # y = np.multiply(1 / 3, np.ones([1, 4]))
-                # y[0, next_move] = 0
-                # self.network.model.fit(new_mat, y, epochs=10, steps_per_epoch=10)
-                break
-            elif self.is_over():
+            if (new_mat is not None and np.array_equal(matrix, new_mat)) or self.is_over():
                 break
             else:
                 matrix = new_mat

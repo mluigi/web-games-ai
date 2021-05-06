@@ -3,10 +3,11 @@ import random
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, InputLayer
-from tensorflow.keras.models import Sequential
+from tensorflow.python.keras import Sequential
 
 
 class Network:
+    model: Sequential
 
     def __init__(self, nn_params=None):
         if nn_params is None:

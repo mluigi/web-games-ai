@@ -142,6 +142,6 @@ class Game2048Mem:
                     break
         if not (flag or self.game_panel.can_merge()):
             self.end = True
-            print("Over")
+            # print("Over")
         if self.game_panel.moved:
             self.game_panel.random_cell()
