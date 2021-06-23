@@ -3,7 +3,7 @@ import random
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 
-import tensorflow.keras as keras
+import keras
 
 from network import Network
 from player import Player2048Mem

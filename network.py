@@ -1,7 +1,7 @@
 import random
 
+import keras.backend
 import numpy as np
-import tensorflow as tf
 from keras import Sequential
 from keras.layers import Dense, Flatten, InputLayer
 
@@ -72,7 +72,7 @@ class Network:
 
     def get_next_move_index(self, input_data):
         prediction = self.model(input_data)
-        return tf.math.argmax(prediction[0])
+        return keras.backend.argmax(prediction[0])
 
     def update_weights(self, mutation_rate=0.05):
         for layer in self.model.layers:
