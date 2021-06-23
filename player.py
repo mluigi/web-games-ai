@@ -184,7 +184,10 @@ class Player2048Mem:
             self.network = network
 
     def get_score(self):
-        return self.game.game_panel.score
+        score = self.game.game_panel.score
+        if self.is_over():
+            score /= 2
+        return score
 
     def get_best_score(self):
         return self.get_score()
