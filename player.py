@@ -2,10 +2,10 @@ import json
 import random
 from time import sleep
 
+import keras.backend as K
 import numpy as np
-import tensorflow.keras.backend as K
+from keras.models import clone_model
 from selenium.webdriver.common.keys import Keys
-from tensorflow.keras.models import clone_model
 
 from Game2048Mem import Game2048Mem, Board
 from network import Network
@@ -25,8 +25,8 @@ class Player:
         # }
         if network is None:
             nn_params = {
-                'nb_neurons': 32,
-                'nb_layers': 2,
+                'nb_neurons': 64,
+                'nb_layers': 3,
                 'activation': 'sigmoid',
             }
             self.network = Network(nn_params)

@@ -2,8 +2,8 @@ import random
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Flatten, InputLayer
-from tensorflow.python.keras import Sequential
+from keras import Sequential
+from keras.layers import Dense, Flatten, InputLayer
 
 
 class Network:
