@@ -1,8 +1,6 @@
-# File for testing functions
+from tf_agents.environments import utils
 
-import os
+from env2048mem import Env2048Mem
 
-if not os.path.exists("chkpoints"):
-    os.mkdir("chkpoints")
-    os.makedirs("chkpoints/prev")
-    os.makedirs("chkpoints/lts")
+env = Env2048Mem()
+utils.validate_py_environment(env, episodes=5)

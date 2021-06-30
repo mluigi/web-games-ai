@@ -2,9 +2,7 @@
 
 ## WIP
 
-Neural network learns to play browser games through genetic algorithm.
-
-The current algorithm doesn't really work, so I'm trying different options.
+Neural network learns to play browser games through ~~genetic algorithm~~ reinforcement learning.
 
 Games:
 
@@ -12,5 +10,5 @@ Games:
 
 ## Contributing
 
-This is my first project involving neural networks and genetic algorithms, I'm open to suggestions and also feel free to
-fork and open pull requests.
+This is my first project involving neural networks, I'm open to suggestions and also feel free to fork and open pull
+requests.

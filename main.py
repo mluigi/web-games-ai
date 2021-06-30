@@ -1,136 +1,146 @@
 import os
-import random
-import shutil
-from concurrent.futures import ThreadPoolExecutor
 
-import keras
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tf_agents.agents.dqn import dqn_agent
+from tf_agents.drivers import dynamic_step_driver
+from tf_agents.environments import tf_py_environment
+from tf_agents.networks import q_network
+from tf_agents.replay_buffers import tf_uniform_replay_buffer
+from tf_agents.utils import common
+from tqdm import tqdm
 
-from network import Network
-from player import Player2048Mem
-
-
-def delete_all_files_in(folder):
-    for filename in os.listdir(folder):
-        file_path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+from env2048mem import Env2048Mem
 
 
-def move_all_files(src, dst):
-    file_names = os.listdir(src)
-    for file_name in file_names:
-        shutil.move(os.path.join(src, file_name), dst)
+def compute_avg_return(environment, policy, num_episodes=10):
+    total_return = 0.0
+    for _ in range(num_episodes):
+
+        time_step = environment.reset()
+        episode_return = 0.0
+        prev_action: any = None
+        repeated_same_action = 0
+        while not time_step.is_last() and repeated_same_action < 10:
+            action_step = policy.action(time_step)
+            if prev_action == action_step:
+                repeated_same_action += 1
+            else:
+                repeated_same_action = 0
+            prev_action = action_step
+            time_step = environment.step(action_step.action)
+            episode_return += time_step.reward
+        total_return += episode_return
+
+    avg_return = total_return / num_episodes
+    return avg_return.numpy()[0]
 
 
 def main():
-    n_players = 200
-    stations = []
-    players = []
-    n_pops = 0
-    generation = 0
+    tf.compat.v1.enable_v2_behavior()
+    # Mostly copied from https://www.tensorflow.org/agents/tutorials/1_dqn_tutorial
+    # Hyperparameters
+    num_iterations = 20000
 
-    if not os.path.exists("chkpoints"):
-        os.mkdir("chkpoints")
-        os.makedirs("chkpoints/prev")
-        os.makedirs("chkpoints/lts")
-        for i in range(n_players):
-            players.append(Player2048Mem(f"player {n_pops}"))
-            n_pops += 1
-    elif os.path.exists("chkpoints/lts") and len(os.listdir("chkpoints/lts")) > 0:
-        print("sasa")
-        max_n_players = 0
-        for filename in os.listdir("chkpoints/lts"):
-            split_filename = filename.split("-")
-            gen = split_filename[0]
-            player_name = split_filename[1].split(".")[0]
-            player_n = int(player_name.split(" ")[1])
-            if max_n_players < player_n:
-                max_n_players = player_n
-            generation = int(gen)
-            network = Network()
-            network.model = keras.models.load_model(f"chkpoints/lts/{filename}")
-            players.append(Player2048Mem(player_name, network=network))
-        n_pops = max_n_players
-        print("loaded saved players")
-    else:
-        for i in range(n_players):
-            players.append(Player2048Mem(f"player {n_pops}"))
-            n_pops += 1
+    initial_collect_steps = 100
+    collect_steps_per_iteration = 2
+    replay_buffer_max_length = 100000
 
-    # with ThreadPoolExecutor(max_workers=4) as executor:
-    #     def init():
-    #         global n_pops
-    #         stations.append(Station(Game2048()))
-    #         players.append(Player2048(f"player {n_pops}", stations[i]))
-    #         n_pops += 1
-    #
-    #     for i in range(n_players):
-    #         executor.submit(init)
+    batch_size = 64
+    learning_rate = 1e-3
+    log_interval = 200
 
-    has_somebody_won = False
-    while not has_somebody_won:
-        with ThreadPoolExecutor(max_workers=n_players) as executor:
-            for player in players:
-                executor.submit(player.play)
+    num_eval_episodes = 10
+    eval_interval = 1000
 
-        sorted_players = [player for player in sorted(players, key=lambda x: x.get_best_score(), reverse=True)]
-        # sorted_players = [player for player in sorted(players, key=lambda x: x.highest_cell, reverse=True)]
+    # Environment
+    # env = Env2048()
+    train_py_env = Env2048Mem()
+    eval_py_env = Env2048Mem()
+    train_env = tf_py_environment.TFPyEnvironment(train_py_env)
+    eval_env = tf_py_environment.TFPyEnvironment(eval_py_env)
 
-        print(f"generation {generation} top 10")
-        print("\t\tScore\tHighest cell")
-        for player in sorted_players[:10]:
-            print(f"{player.name}\t{player.get_best_score()}\t{player.highest_cell}")
+    # Agent
+    fc_layer_params = (100, 50)
 
-        winners = [player for player in players if player.has_won()]
+    q_net = q_network.QNetwork(
+        train_env.observation_spec(),
+        train_env.action_spec(),
+        fc_layer_params=fc_layer_params)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+    global_step = tf.compat.v1.train.get_or_create_global_step()
+    agent = dqn_agent.DqnAgent(
+        train_env.time_step_spec(),
+        train_env.action_spec(),
+        q_network=q_net,
+        optimizer=optimizer,
+        td_errors_loss_fn=common.element_wise_squared_loss,
+        train_step_counter=global_step)
+    agent.initialize()
 
-        if len(winners) > 0:
-            has_somebody_won = True
-            print("Winners:")
-            for winner in winners:
-                print(f"{winner.name}: {winner.get_best_score()}\thighest cell: {winner.highest_cell}")
-                winner.network.model.save(winner.name)
-        else:
-            retained_players = sorted_players[:int(n_players / 2)]
-            removed_players = sorted_players[int(n_players / 2):]
-            # available_stations = list(map(lambda x: x.station, removed_players))
-            players = retained_players
-            while len(players) < n_players:
-                genitore1 = random.randint(0, len(players) - 1)
-                genitore2 = random.randint(0, len(players) - 1)
-                if genitore1 != genitore2:
-                    genitore1 = players[genitore1]
-                    genitore2 = players[genitore2]
-                    new_player = genitore1.generate_child_with(genitore2,
-                                                               # available_stations.pop(),
-                                                               f"player {n_pops}")
-                    if random.random() < 0.33:
-                        new_player.mutate()
-                    players.append(new_player)
-                    n_pops += 1
+    # Replay buffer
+    replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
+        data_spec=agent.collect_data_spec,
+        batch_size=train_env.batch_size,
+        max_length=replay_buffer_max_length)
 
-            generation += 1
-            if generation % 50 == 0:
-                delete_all_files_in("chkpoints/prev")
-                move_all_files("chkpoints/lts", "chkpoints/prev")
+    # Data Collection
+    collect_driver = dynamic_step_driver.DynamicStepDriver(
+        train_env,
+        agent.collect_policy,
+        observers=[replay_buffer.add_batch],
+        num_steps=collect_steps_per_iteration)
 
-            with ThreadPoolExecutor(max_workers=50) as executor:
-                def reset(player_to_save):
-                    player_to_save.reset_best_score()
-                    if generation % 50 == 0:
-                        player_to_save.network.model.save(f"chkpoints/lts/{generation}-{player_to_save.name}.keras")
+    collect_driver.run()
 
-                #   player.station.restart()
+    dataset = replay_buffer.as_dataset(
+        num_parallel_calls=3,
+        sample_batch_size=batch_size,
+        num_steps=2).prefetch(3)
+    iterator = iter(dataset)
 
-                for player in players:
-                    executor.submit(reset, player)
+    # Save tools
+    checkpoint_dir = os.path.join(os.getcwd(), 'checkpoint')
+    train_checkpointer = common.Checkpointer(
+        ckpt_dir=checkpoint_dir,
+        max_to_keep=1,
+        agent=agent,
+        policy=agent.policy,
+        replay_buffer=replay_buffer,
+        global_step=global_step
+    )
 
-    for station in stations:
-        station.shutdown()
+    train_checkpointer.initialize_or_restore()
+    global_step = tf.compat.v1.train.get_global_step()
+    # Training
+    agent.train = common.function(agent.train)
+    # agent.train_step_counter.assign(0)
+    avg_return = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
+    returns = [avg_return]
+    for _ in tqdm(range(global_step.numpy(), num_iterations)):
+        # Collect a few steps using collect_policy and save to the replay buffer.
+        collect_driver.run()
+
+        # Sample a batch of data from the buffer and update the agent's network.
+        experience, unused_info = next(iterator)
+        train_loss = agent.train(experience).loss
+
+        step = tf.compat.v1.train.get_global_step().numpy()
+
+        if step % log_interval == 0:
+            train_checkpointer.save(step)
+            tqdm.write(f"step = {step}: loss = {train_loss}")
+
+        if step % eval_interval == 0:
+            avg_return = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
+            tqdm.write('step = {0}: Average Return = {1}'.format(step, avg_return))
+            returns.append(avg_return)
+
+    iterations = range(0, num_iterations + 1, eval_interval)
+    plt.plot(iterations, returns)
+    plt.ylabel('Average Return')
+    plt.xlabel('Iterations')
+    # plt.ylim(top=250)
 
 
 if __name__ == '__main__':
