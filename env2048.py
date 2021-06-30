@@ -46,13 +46,13 @@ class Env2048(py_environment.PyEnvironment):
         self._state = new_matrix if new_matrix is not None else matrix
         reward = 0
         if new_matrix is not None and np.array_equal(matrix, new_matrix):
-            reward = -50
+            reward = -10
         elif self.is_over():
             self._episode_ended = True
-            reward = -200
+            reward = -50
         elif self.has_won():
             self._episode_ended = True
-            reward = 5000
+            reward = 1000
         else:
             reward = new_score - score
         sleep(0.1)
