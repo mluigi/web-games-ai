@@ -8,13 +8,15 @@ from tf_agents.specs import array_spec
 from tf_agents.trajectories import time_step as ts
 from tf_agents.typing import types
 
+from Game2048Mem import Game2048Mem, Board
 from game import Game2048
 from station import Station
 
 
 class Env2048(py_environment.PyEnvironment):
-    def __init__(self):
+    def __init__(self, evaluation_mode: bool):
         super().__init__()
+        self._evaluation_mode = evaluation_mode
         self._action_spec = array_spec.BoundedArraySpec(
             shape=(), dtype=np.int32, minimum=0, maximum=3, name='action')
         self._observation_spec = array_spec.BoundedArraySpec(
@@ -22,11 +24,20 @@ class Env2048(py_environment.PyEnvironment):
         self._state = np.zeros((4, 4), dtype=np.int32)
         self._episode_ended = False
         self.moves = []
-        self.moves.append(lambda: self.station.game_window().send_keys(Keys.UP))
-        self.moves.append(lambda: self.station.game_window().send_keys(Keys.RIGHT))
-        self.moves.append(lambda: self.station.game_window().send_keys(Keys.DOWN))
-        self.moves.append(lambda: self.station.game_window().send_keys(Keys.LEFT))
-        self.station = Station(Game2048())
+
+        if self._evaluation_mode:
+            self.station = Station(Game2048())
+            self.moves.append(lambda: self.station.game_window().send_keys(Keys.UP))
+            self.moves.append(lambda: self.station.game_window().send_keys(Keys.RIGHT))
+            self.moves.append(lambda: self.station.game_window().send_keys(Keys.DOWN))
+            self.moves.append(lambda: self.station.game_window().send_keys(Keys.LEFT))
+        else:
+            self.game = Game2048Mem(Board())
+            self.game.start()
+            self.moves.append(lambda: self.game.link_keys(0))
+            self.moves.append(lambda: self.game.link_keys(1))
+            self.moves.append(lambda: self.game.link_keys(2))
+            self.moves.append(lambda: self.game.link_keys(3))
         self.prev_score = 0
 
     def observation_spec(self) -> types.NestedArraySpec:
@@ -51,34 +62,46 @@ class Env2048(py_environment.PyEnvironment):
             self._episode_ended = True
             reward = -50
         elif self.has_won():
+            print("Win")
             self._episode_ended = True
             reward = 1000
         else:
             reward = new_score - score
-        sleep(0.1)
+        if self._evaluation_mode:
+            sleep(0.1)
         if self._episode_ended:
             return ts.termination(self._state, reward)
         else:
             return ts.transition(self._state, reward=reward, discount=1.0)
 
     def get_score(self):
-        state = self.get_game_state()
-        if state is None:
+        if self._evaluation_mode:
+            state = self.get_game_state()
+            if state is None:
+                return self.prev_score
+            self.prev_score = state["score"]
             return self.prev_score
-        self.prev_score = state["score"]
-        return self.prev_score
+        else:
+            return self.game.game_panel.score
 
     def _reset(self) -> ts.TimeStep:
-        self.station.restart()
+        if self._evaluation_mode:
+            self.station.restart()
+        else:
+            self.game.game_panel = Board()
+            self.game.start()
         self._state = np.zeros((4, 4), dtype=np.int32)
         self._episode_ended = False
         return ts.restart(self._state)
 
     def has_won(self):
-        has_won = False
-        if self.get_game_state() is not None:
-            has_won = self.get_game_state()["won"]
-        return has_won
+        if self._evaluation_mode:
+            has_won = False
+            if self.get_game_state() is not None:
+                has_won = self.get_game_state()["won"]
+            return has_won
+        else:
+            return self.game.won
 
     def get_game_state(self):
         try:
@@ -87,17 +110,28 @@ class Env2048(py_environment.PyEnvironment):
             return None
 
     def is_over(self):
-        return self.get_game_state() is None
+        if self._evaluation_mode:
+            return self.get_game_state() is None
+        else:
+            return self.game.end
 
     def get_matrix(self):
-        game_state = self.get_game_state()
-        if game_state is not None:
-            cells = game_state["grid"]["cells"]
-            matrix = np.zeros((4, 4), dtype=np.int32)
+        matrix = np.zeros((4, 4), dtype=np.int32)
+        if self._evaluation_mode:
+            game_state = self.get_game_state()
+            if game_state is not None:
+                cells = game_state["grid"]["cells"]
+                for i, column in enumerate(cells):
+                    for j, cell in enumerate(column):
+                        if cell is not None:
+                            matrix[i][j] = cell["value"]
+                return matrix.transpose()
+            else:
+                return None
+        else:
+            cells = self.game.game_panel.gridCell
             for i, column in enumerate(cells):
                 for j, cell in enumerate(column):
                     if cell is not None:
-                        matrix[i][j] = cell["value"]
+                        matrix[i][j] = cell
             return matrix
-        else:
-            return None

@@ -16,7 +16,6 @@ from env2048 import Env2048
 def compute_avg_return(environment, policy, num_episodes=10):
     total_return = 0.0
     for _ in range(num_episodes):
-
         time_step = environment.reset()
         episode_return = 0.0
         prev_action: any = None
@@ -42,8 +41,7 @@ def main(evaluate):
     # Hyperparameters
     num_iterations = 20000
 
-    initial_collect_steps = 100
-    collect_steps_per_iteration = 100
+    collect_steps_per_iteration = 2
     replay_buffer_max_length = 100000
 
     batch_size = 64
@@ -55,10 +53,8 @@ def main(evaluate):
 
     # Environment
     # env = Env2048()
-    train_py_env = Env2048()
-    eval_py_env = Env2048()
-    # train_py_env = Env2048Mem()
-    # eval_py_env = Env2048Mem()
+    train_py_env = Env2048(evaluate)
+    eval_py_env = Env2048(evaluate)
     train_env = tf_py_environment.TFPyEnvironment(train_py_env)
     eval_env = tf_py_environment.TFPyEnvironment(eval_py_env)
 
@@ -116,8 +112,9 @@ def main(evaluate):
     global_step = tf.compat.v1.train.get_global_step()
     # Training
     if evaluate:
-        env = Env2048()
-        print(f"Average return: {compute_avg_return(env, agent.policy, num_eval_episodes)}")
+        print(f"Average return: {compute_avg_return(eval_env, agent.policy, num_eval_episodes)}")
+        train_env.station.shutdown()
+        eval_env.station.shutdown()
     else:
         agent.train = common.function(agent.train)
         # agent.train_step_counter.assign(0)
