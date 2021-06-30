@@ -41,7 +41,7 @@ def main(evaluate):
     # Hyperparameters
     num_iterations = 20000
 
-    collect_steps_per_iteration = 2
+    collect_steps_per_iteration = 100
     replay_buffer_max_length = 100000
 
     batch_size = 64
