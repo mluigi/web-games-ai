@@ -1,5 +1,4 @@
 import json
-from math import log2
 from time import sleep
 
 import numpy as np
@@ -24,22 +23,23 @@ class Env2048(py_environment.PyEnvironment):
             shape=(4, 4), dtype=np.int32, minimum=1, maximum=12, name='observation')
         self._state = np.zeros((4, 4), dtype=np.int32)
         self._episode_ended = False
-        self.moves = []
+        self._moves = []
+        self.best_score = 0
 
         if self._evaluation_mode:
             self.station = Station(Game2048())
-            self.moves.append(lambda: self.station.game_window().send_keys(Keys.UP))
-            self.moves.append(lambda: self.station.game_window().send_keys(Keys.RIGHT))
-            self.moves.append(lambda: self.station.game_window().send_keys(Keys.DOWN))
-            self.moves.append(lambda: self.station.game_window().send_keys(Keys.LEFT))
+            self._moves.append(lambda: self.station.game_window().send_keys(Keys.UP))
+            self._moves.append(lambda: self.station.game_window().send_keys(Keys.RIGHT))
+            self._moves.append(lambda: self.station.game_window().send_keys(Keys.DOWN))
+            self._moves.append(lambda: self.station.game_window().send_keys(Keys.LEFT))
         else:
             self.game = Game2048Mem(Board())
             self.game.start()
-            self.moves.append(lambda: self.game.link_keys(0))
-            self.moves.append(lambda: self.game.link_keys(1))
-            self.moves.append(lambda: self.game.link_keys(2))
-            self.moves.append(lambda: self.game.link_keys(3))
-        self.prev_score = 0
+            self._moves.append(lambda: self.game.link_keys(0))
+            self._moves.append(lambda: self.game.link_keys(1))
+            self._moves.append(lambda: self.game.link_keys(2))
+            self._moves.append(lambda: self.game.link_keys(3))
+        self._prev_score = 0
 
     def observation_spec(self) -> types.NestedArraySpec:
         return self._observation_spec
@@ -52,7 +52,7 @@ class Env2048(py_environment.PyEnvironment):
             return self.reset()
         score = self.get_score()
         matrix = self.get_matrix()
-        self.moves[action]()
+        self._moves[action]()
         new_score = self.get_score()
         new_matrix = self.get_matrix()
         self._state = new_matrix if new_matrix is not None else matrix
@@ -61,14 +61,13 @@ class Env2048(py_environment.PyEnvironment):
             reward = -1
         elif self.is_over():
             self._episode_ended = True
-            reward = -10
+            reward = -2
         elif self.has_won():
             print("Win")
             self._episode_ended = True
-            reward = 1000
+            reward = 10
         else:
-            reward = new_score - score
-            reward = log2(new_score - score) if reward > 0 else 0
+            reward = 1 if new_score - score > 0 else 0
         if self._evaluation_mode:
             sleep(0.1)
         if self._episode_ended:
@@ -80,10 +79,14 @@ class Env2048(py_environment.PyEnvironment):
         if self._evaluation_mode:
             state = self.get_game_state()
             if state is None:
-                return self.prev_score
-            self.prev_score = state["score"]
-            return self.prev_score
+                return self._prev_score
+            self._prev_score = state["score"]
+            if self._prev_score > self.best_score:
+                self.best_score = self._prev_score
+            return self._prev_score
         else:
+            if self.game.game_panel.score > self.best_score:
+                self.best_score = self.game.game_panel.score
             return self.game.game_panel.score
 
     def _reset(self) -> ts.TimeStep:
