@@ -1,4 +1,5 @@
 import json
+from math import log2
 from time import sleep
 
 import numpy as np
@@ -20,7 +21,7 @@ class Env2048(py_environment.PyEnvironment):
         self._action_spec = array_spec.BoundedArraySpec(
             shape=(), dtype=np.int32, minimum=0, maximum=3, name='action')
         self._observation_spec = array_spec.BoundedArraySpec(
-            shape=(4, 4), dtype=np.int32, minimum=0, maximum=2048, name='observation')
+            shape=(4, 4), dtype=np.int32, minimum=1, maximum=12, name='observation')
         self._state = np.zeros((4, 4), dtype=np.int32)
         self._episode_ended = False
         self.moves = []
@@ -57,16 +58,17 @@ class Env2048(py_environment.PyEnvironment):
         self._state = new_matrix if new_matrix is not None else matrix
         reward = 0
         if new_matrix is not None and np.array_equal(matrix, new_matrix):
-            reward = -10
+            reward = -1
         elif self.is_over():
             self._episode_ended = True
-            reward = -50
+            reward = -10
         elif self.has_won():
             print("Win")
             self._episode_ended = True
             reward = 1000
         else:
             reward = new_score - score
+            reward = log2(new_score - score) if reward > 0 else 0
         if self._evaluation_mode:
             sleep(0.1)
         if self._episode_ended:
@@ -125,7 +127,7 @@ class Env2048(py_environment.PyEnvironment):
                     for j, cell in enumerate(column):
                         if cell is not None:
                             matrix[i][j] = cell["value"]
-                return matrix.transpose()
+
             else:
                 return None
         else:
@@ -134,4 +136,11 @@ class Env2048(py_environment.PyEnvironment):
                 for j, cell in enumerate(column):
                     if cell is not None:
                         matrix[i][j] = cell
+
+        matrix = np.where(matrix == 0, 1, matrix)
+        matrix = np.log2(matrix)
+        matrix = np.add(matrix, 1).astype('int32')
+        if self._evaluation_mode:
+            return matrix.transpose()
+        else:
             return matrix

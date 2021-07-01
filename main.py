@@ -1,11 +1,14 @@
+from __future__ import absolute_import, division, print_function
+
 import argparse
 import os
 
 import tensorflow as tf
-from tf_agents.agents.dqn import dqn_agent
+from matplotlib import pyplot as plt
+from tf_agents.agents.categorical_dqn import categorical_dqn_agent
 from tf_agents.drivers import dynamic_step_driver
 from tf_agents.environments import tf_py_environment
-from tf_agents.networks import q_network
+from tf_agents.networks import categorical_q_network
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common
 from tqdm import tqdm
@@ -35,45 +38,72 @@ def compute_avg_return(environment, policy, num_episodes=10):
     return avg_return.numpy()[0]
 
 
-def main(evaluate):
+def main(args):
     tf.compat.v1.enable_v2_behavior()
+
+    evaluate = args.eval
+
     # Mostly copied from https://www.tensorflow.org/agents/tutorials/1_dqn_tutorial
     # Hyperparameters
-    num_iterations = 20000
+    num_iterations = args.num_iterations
 
-    collect_steps_per_iteration = 100
+    collect_steps_per_iteration = args.collect_steps_per_iteration
     replay_buffer_max_length = 100000
 
-    batch_size = 64
-    learning_rate = 1e-3
-    log_interval = 200
+    batch_size = 128
+    learning_rate = 2.5e-5
+    log_interval = args.log_interval
+
+    num_atoms = 256
+    min_q_value = 0
+    max_q_value = 256
+    n_step_update = args.n_step_update
+    gamma = 0.99
 
     num_eval_episodes = 10
-    eval_interval = 1000
+    eval_interval = args.eval_interval
 
     # Environment
-    # env = Env2048()
     train_py_env = Env2048(evaluate)
     eval_py_env = Env2048(evaluate)
     train_env = tf_py_environment.TFPyEnvironment(train_py_env)
     eval_env = tf_py_environment.TFPyEnvironment(eval_py_env)
 
     # Agent
-    fc_layer_params = (100, 50)
-
-    q_net = q_network.QNetwork(
-        train_env.observation_spec(),
-        train_env.action_spec(),
-        fc_layer_params=fc_layer_params)
+    fc_layer_params = (64, 64, 32)
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
     global_step = tf.compat.v1.train.get_or_create_global_step()
-    agent = dqn_agent.DqnAgent(
+
+    # q_net = q_network.QNetwork(
+    #     train_env.observation_spec(),
+    #     train_env.action_spec(),
+    #     fc_layer_params=fc_layer_params)
+    # agent = dqn_agent.DqnAgent(
+    #     train_env.time_step_spec(),
+    #     train_env.action_spec(),
+    #     q_network=q_net,
+    #     optimizer=optimizer,
+    #     td_errors_loss_fn=common.element_wise_squared_loss,
+    #     train_step_counter=global_step)
+
+    categorical_q_net = categorical_q_network.CategoricalQNetwork(
+        train_env.observation_spec(),
+        train_env.action_spec(),
+        num_atoms=num_atoms,
+        fc_layer_params=fc_layer_params
+    )
+    agent = categorical_dqn_agent.CategoricalDqnAgent(
         train_env.time_step_spec(),
         train_env.action_spec(),
-        q_network=q_net,
+        categorical_q_network=categorical_q_net,
         optimizer=optimizer,
+        min_q_value=min_q_value,
+        max_q_value=max_q_value,
+        n_step_update=n_step_update,
         td_errors_loss_fn=common.element_wise_squared_loss,
-        train_step_counter=global_step)
+        gamma=gamma,
+        train_step_counter=global_step
+    )
     agent.initialize()
 
     # Replay buffer
@@ -138,10 +168,22 @@ def main(evaluate):
                 avg_return = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
                 tqdm.write('step = {0}: Average Return = {1}'.format(step, avg_return))
                 returns.append(avg_return)
+        steps = range(0, num_iterations + 1, eval_interval)
+        plt.plot(steps, returns)
+        plt.ylabel('Average Return')
+        plt.xlabel('Step')
+
+    train_env.close()
+    eval_env.close()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--eval", action='store_true', help="Evaluate the trained network")
+    parser.add_argument("--num_iterations", type=int, default=20000)
+    parser.add_argument("--collect_steps_per_iteration", type=int, default=20)
+    parser.add_argument("--n_step_update", type=int, default=5)
+    parser.add_argument("--log_interval", type=int, default=200)
+    parser.add_argument("--eval_interval", type=int, default=1000)
     args = parser.parse_args()
-    main(args.eval)
+    main(args)
