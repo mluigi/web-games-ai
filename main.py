@@ -63,6 +63,8 @@ def main(args):
     num_eval_episodes = 10
     eval_interval = args.eval_interval
 
+    save_interval = args.save_interval
+
     # Environment
     train_py_env = Env2048(evaluate)
     eval_py_env = Env2048(evaluate)
@@ -161,8 +163,10 @@ def main(args):
             step = tf.compat.v1.train.get_global_step().numpy()
 
             if step % log_interval == 0:
-                train_checkpointer.save(step)
                 tqdm.write(f"step = {step}: loss = {train_loss}")
+
+            if step % save_interval == 0:
+                train_checkpointer.save(step)
 
             if step % eval_interval == 0:
                 avg_return = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
@@ -185,5 +189,6 @@ if __name__ == '__main__':
     parser.add_argument("--n_step_update", type=int, default=5)
     parser.add_argument("--log_interval", type=int, default=200)
     parser.add_argument("--eval_interval", type=int, default=1000)
+    parser.add_argument("--save_interval", type=int, default=100)
     args = parser.parse_args()
     main(args)
