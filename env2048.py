@@ -26,7 +26,6 @@ class Env2048(py_environment.PyEnvironment):
         self._episode_ended = False
         self._moves = []
         self.best_score = 0
-        self._repeated_moves = 0
 
         if self._evaluation_mode:
             self.station = Station(Game2048())
@@ -63,12 +62,6 @@ class Env2048(py_environment.PyEnvironment):
         reward = 0
         if new_matrix is not None and np.array_equal(matrix, new_matrix):
             reward = -1
-            self._repeated_moves += 1
-            if self._repeated_moves == 5:
-                # print("repeated moves")
-                self._episode_ended = True
-                self._repeated_moves = 0
-                reward = -2
         else:
             reward = 1 if new_score - score > 0 else 0
 
