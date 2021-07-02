@@ -5,6 +5,7 @@ import logging
 import logging.config
 import os
 
+import numpy as np
 import tensorflow as tf
 import tf_agents
 from matplotlib import pyplot as plt
@@ -14,7 +15,7 @@ from tf_agents.environments import tf_py_environment, ParallelPyEnvironment
 from tf_agents.networks import categorical_q_network
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common
-from tqdm import tqdm
+from tqdm import trange
 
 from env2048 import Env2048
 
@@ -67,9 +68,9 @@ def main(argv):
     learning_rate = 2.5e-5
     log_interval = argv.log_interval
 
-    num_atoms = 256
-    min_q_value = 0
-    max_q_value = 256
+    num_atoms = argv.num_atoms
+    min_q_value = argv.min_q_value
+    max_q_value = argv.max_q_value
     n_step_update = argv.n_step_update
     gamma = 0.99
 
@@ -79,14 +80,10 @@ def main(argv):
     save_interval = argv.save_interval
     n_parallels = argv.n_parallels
 
-    if evaluate:
-        n_parallels = 1
-
     # Environment
-    train_py_env = ParallelPyEnvironment(
+    train_py_env = Env2048(evaluate) if evaluate else ParallelPyEnvironment(
         [lambda: Env2048(evaluate)] * n_parallels,
-        start_serially=False
-    )
+        start_serially=False)
     eval_py_env = Env2048(evaluate)
     train_env = tf_py_environment.TFPyEnvironment(train_py_env)
     eval_env = tf_py_environment.TFPyEnvironment(eval_py_env)
@@ -173,7 +170,9 @@ def main(argv):
         # agent.train_step_counter.assign(0)
         avg_return = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
         returns = [avg_return]
-        for _ in tqdm(range(global_step.numpy(), num_iterations)):
+        t = trange(global_step.numpy(), num_iterations, desc='Bar desc', leave=True)
+        best_scores = np.array(list(map(lambda env: env.best_score, train_env.envs)))
+        for _ in t:
             # Collect a few steps using collect_policy and save to the replay buffer.
             collect_driver.run()
 
@@ -181,17 +180,25 @@ def main(argv):
             experience, unused_info = next(iterator)
             train_loss = agent.train(experience).loss
 
+            scores = list(map(lambda env: env.score, train_env.envs))
+            t.set_description(desc=f"Scores = {scores}")
+
             step = tf.compat.v1.train.get_global_step().numpy()
 
             if step % log_interval == 0:
-                tqdm.write(f"step = {step}: loss = {train_loss}")
+                t.write(f"step = {step}: loss = {train_loss}")
 
             if step % save_interval == 0:
                 train_checkpointer.save(step)
 
             if step % eval_interval == 0:
                 avg_return, best_eval_score = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
-                tqdm.write(
+                new_best_scores = np.array(list(map(lambda env: env.best_score, train_env.envs)))
+                diff = np.subtract(new_best_scores, best_scores)
+                best_scores = new_best_scores
+                if np.count_nonzero(diff) == 0:
+                    t.write(f"step = {step}: Best scores = {best_scores}")
+                t.write(
                     f'step = {step}: Average Return = {avg_return}, best score reached in training = '
                     f'{max(list(map(lambda env: env.best_score, train_env.envs)))}'
                     f', best score in eval = {best_eval_score}'
@@ -215,8 +222,11 @@ if __name__ == '__main__':
     parser.add_argument("--n_step_update", type=int, default=5)
     parser.add_argument("--log_interval", type=int, default=200)
     parser.add_argument("--eval_interval", type=int, default=1000)
-    parser.add_argument("--save_interval", type=int, default=100)
+    parser.add_argument("--save_interval", type=int, default=1000)
     parser.add_argument("--n_parallels", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--num_atoms", type=int, default=51)
+    parser.add_argument("--min_q_value", type=int, default=-20)
+    parser.add_argument("--max_q_value", type=int, default=20)
     args = parser.parse_args()
     tf_agents.system.multiprocessing.handle_main(main, [args])

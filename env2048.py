@@ -14,6 +14,7 @@ from station import Station
 
 
 class Env2048(py_environment.PyEnvironment):
+
     def __init__(self, evaluation_mode: bool):
         super().__init__()
         self._evaluation_mode = evaluation_mode
@@ -25,6 +26,7 @@ class Env2048(py_environment.PyEnvironment):
         self._episode_ended = False
         self._moves = []
         self.best_score = 0
+        self._repeated_moves = 0
 
         if self._evaluation_mode:
             self.station = Station(Game2048())
@@ -39,7 +41,7 @@ class Env2048(py_environment.PyEnvironment):
             self._moves.append(lambda: self.game.link_keys(1))
             self._moves.append(lambda: self.game.link_keys(2))
             self._moves.append(lambda: self.game.link_keys(3))
-        self._prev_score = 0
+        self.score = 0
 
     def observation_spec(self) -> types.NestedArraySpec:
         return self._observation_spec
@@ -54,20 +56,30 @@ class Env2048(py_environment.PyEnvironment):
         matrix = self.get_matrix()
         self._moves[action]()
         new_score = self.get_score()
+        if new_score > self.best_score:
+            self.best_score = new_score
         new_matrix = self.get_matrix()
         self._state = new_matrix if new_matrix is not None else matrix
         reward = 0
         if new_matrix is not None and np.array_equal(matrix, new_matrix):
             reward = -1
+            self._repeated_moves += 1
+            if self._repeated_moves == 5:
+                # print("repeated moves")
+                self._episode_ended = True
+                self._repeated_moves = 0
+                reward = -2
+        else:
+            reward = 1 if new_score - score > 0 else 0
+
+        if self.has_won():
+            print("Win")
+            self._episode_ended = True
+            reward = 2
         elif self.is_over():
             self._episode_ended = True
             reward = -2
-        elif self.has_won():
-            print("Win")
-            self._episode_ended = True
-            reward = 10
-        else:
-            reward = 1 if new_score - score > 0 else 0
+
         if self._evaluation_mode:
             sleep(0.1)
         if self._episode_ended:
@@ -79,21 +91,18 @@ class Env2048(py_environment.PyEnvironment):
         if self._evaluation_mode:
             state = self.get_game_state()
             if state is None:
-                return self._prev_score
-            self._prev_score = state["score"]
-            if self._prev_score > self.best_score:
-                self.best_score = self._prev_score
-            return self._prev_score
+                return self.score
+            self.score = state["score"]
         else:
-            if self.game.game_panel.score > self.best_score:
-                self.best_score = self.game.game_panel.score
-            return self.game.game_panel.score
+            self.score = self.game.game_panel.score
+        return self.score
 
     def _reset(self) -> ts.TimeStep:
         if self._evaluation_mode:
             self.station.restart()
         else:
             self.game.game_panel = Board()
+            self.game.end = False
             self.game.start()
         self._state = np.zeros((4, 4), dtype=np.int32)
         self._episode_ended = False
