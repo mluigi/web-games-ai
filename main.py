@@ -196,7 +196,7 @@ def main(argv):
                 new_best_scores = np.array(list(map(lambda env: env.best_score, train_env.envs)))
                 diff = np.subtract(new_best_scores, best_scores)
                 best_scores = new_best_scores
-                if np.count_nonzero(diff) == 0:
+                if np.count_nonzero(diff) > 0:
                     t.write(f"step = {step}: Best scores = {best_scores}")
                 t.write(
                     f'step = {step}: Average Return = {avg_return}, best score reached in training = '
