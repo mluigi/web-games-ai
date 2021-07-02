@@ -22,7 +22,6 @@ from env2048 import Env2048
 
 def compute_avg_return(environment, policy, num_episodes=10):
     total_return = 0.0
-    prev_best_score = 0
     for _ in range(num_episodes):
         time_step = environment.reset()
         episode_return = 0.0
@@ -37,13 +36,10 @@ def compute_avg_return(environment, policy, num_episodes=10):
             prev_action = action_step
             time_step = environment.step(action_step.action)
             episode_return += time_step.reward
-            if environment.envs[0].best_score > prev_best_score:
-                prev_best_score = environment.envs[0].best_score
         total_return += episode_return
 
     avg_return = total_return / num_episodes
-
-    return avg_return.numpy()[0], prev_best_score
+    return avg_return.numpy()[0], environment.envs[0].best_score
 
 
 def main(argv):
