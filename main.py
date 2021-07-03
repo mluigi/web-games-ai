@@ -86,6 +86,7 @@ def main(argv):
 
     # Agent
     fc_layer_params = (64, 64, 32)
+    conv_layer_params = ((32, (4, 4), 4),)
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
     global_step = tf.compat.v1.train.get_or_create_global_step()
 
@@ -105,7 +106,8 @@ def main(argv):
         train_env.observation_spec(),
         train_env.action_spec(),
         num_atoms=num_atoms,
-        fc_layer_params=fc_layer_params
+        fc_layer_params=fc_layer_params,
+        conv_layer_params=conv_layer_params
     )
     agent = categorical_dqn_agent.CategoricalDqnAgent(
         train_env.time_step_spec(),
@@ -158,7 +160,8 @@ def main(argv):
 
     # Training
     if evaluate:
-        print(f"Average return: {compute_avg_return(eval_env, agent.policy, num_eval_episodes)}")
+        avg_return, best_eval_score = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
+        print(f"Average return: {avg_return}, best score = {best_eval_score}")
         train_env.station.shutdown()
         eval_env.station.shutdown()
     else:

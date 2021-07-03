@@ -15,14 +15,14 @@ from station import Station
 
 class Env2048(py_environment.PyEnvironment):
 
-    def __init__(self, evaluation_mode: bool):
+    def __init__(self, evaluation_mode: bool = False):
         super().__init__()
         self._evaluation_mode = evaluation_mode
         self._action_spec = array_spec.BoundedArraySpec(
             shape=(), dtype=np.int32, minimum=0, maximum=3, name='action')
         self._observation_spec = array_spec.BoundedArraySpec(
-            shape=(4, 4), dtype=np.int32, minimum=1, maximum=12, name='observation')
-        self._state = np.zeros((4, 4), dtype=np.int32)
+            shape=(4, 4, 1), dtype=np.float32, minimum=1, maximum=12, name='observation')
+        self._state = np.zeros((4, 4, 1))
         self._episode_ended = False
         self._moves = []
         self.best_score = 0
@@ -76,9 +76,9 @@ class Env2048(py_environment.PyEnvironment):
         if self._evaluation_mode:
             sleep(0.1)
         if self._episode_ended:
-            return ts.termination(self._state, reward)
+            return ts.termination(self._state.astype('float32'), reward)
         else:
-            return ts.transition(self._state, reward=reward, discount=1.0)
+            return ts.transition(self._state.astype('float32'), reward=reward, discount=1.0)
 
     def get_score(self):
         if self._evaluation_mode:
@@ -97,7 +97,7 @@ class Env2048(py_environment.PyEnvironment):
             self.game.game_panel = Board()
             self.game.end = False
             self.game.start()
-        self._state = np.zeros((4, 4), dtype=np.int32)
+        self._state = np.zeros((4, 4, 1), dtype=np.float32)
         self._episode_ended = False
         return ts.restart(self._state)
 
@@ -123,7 +123,7 @@ class Env2048(py_environment.PyEnvironment):
             return self.game.end
 
     def get_matrix(self):
-        matrix = np.zeros((4, 4), dtype=np.int32)
+        matrix = np.zeros((4, 4), dtype=np.float32)
         if self._evaluation_mode:
             game_state = self.get_game_state()
             if game_state is not None:
@@ -144,8 +144,8 @@ class Env2048(py_environment.PyEnvironment):
 
         matrix = np.where(matrix == 0, 1, matrix)
         matrix = np.log2(matrix)
-        matrix = np.add(matrix, 1).astype('int32')
+        matrix = np.add(matrix, 1)
         if self._evaluation_mode:
-            return matrix.transpose()
+            return matrix.transpose().reshape((4, 4, 1)).astype('float32')
         else:
-            return matrix
+            return matrix.reshape((4, 4, 1)).astype('float32')
