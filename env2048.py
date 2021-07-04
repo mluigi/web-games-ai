@@ -142,9 +142,9 @@ class Env2048(py_environment.PyEnvironment):
                     if cell is not None:
                         matrix[i][j] = cell
 
-        matrix = np.where(matrix == 0, 1, matrix)
-        matrix = np.log2(matrix)
-        matrix = np.add(matrix, 1)
+        # matrix = np.where(matrix == 0, 1, matrix)
+        # matrix = np.log2(matrix)
+        # matrix = np.add(matrix, 1)
         if self._evaluation_mode:
             return matrix.transpose().reshape((4, 4, 1)).astype('float32')
         else:

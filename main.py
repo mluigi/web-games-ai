@@ -75,10 +75,10 @@ def main(argv):
 
     save_interval = argv.save_interval
     n_parallels = argv.n_parallels
-
+    train_in_browser = argv.train_in_browser
     # Environment
     train_py_env = Env2048(evaluate) if evaluate else ParallelPyEnvironment(
-        [lambda: Env2048(evaluate)] * n_parallels,
+        [lambda: Env2048(train_in_browser)] * n_parallels,
         start_serially=False)
     eval_py_env = Env2048(evaluate)
     train_env = tf_py_environment.TFPyEnvironment(train_py_env)
@@ -86,7 +86,12 @@ def main(argv):
 
     # Agent
     fc_layer_params = (64, 64, 32)
-    conv_layer_params = ((32, (4, 4), 4),)
+    conv_layer_params = ((512, (2, 1), (1, 1)), (512, (1, 2), (1, 1)))
+    preprocessing_layers = tf.keras.models.Sequential([tf.keras.layers.Conv2D(512, (1, 1), (1, 1), padding='same'),
+                                                       tf.keras.layers.Conv2D(512, (2, 1), (1, 1), padding='same'),
+                                                       tf.keras.layers.Conv2D(512, (1, 2), (1, 1), padding='same'),
+                                                       tf.keras.layers.Flatten()])
+    preprocessing_combiner = tf.keras.layers.Concatenate(axis=-1)
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
     global_step = tf.compat.v1.train.get_or_create_global_step()
 
@@ -107,7 +112,9 @@ def main(argv):
         train_env.action_spec(),
         num_atoms=num_atoms,
         fc_layer_params=fc_layer_params,
-        conv_layer_params=conv_layer_params
+        # conv_layer_params=conv_layer_params
+        preprocessing_layers=preprocessing_layers,
+        preprocessing_combiner=preprocessing_combiner
     )
     agent = categorical_dqn_agent.CategoricalDqnAgent(
         train_env.time_step_spec(),
@@ -169,7 +176,7 @@ def main(argv):
         # agent.train_step_counter.assign(0)
         avg_return = compute_avg_return(eval_env, agent.policy, num_eval_episodes)
         returns = [avg_return]
-        t = trange(global_step.numpy(), num_iterations, desc='Bar desc', leave=True)
+        t = trange(global_step.numpy(), num_iterations, leave=True)
         best_scores = np.array(list(map(lambda env: env.best_score, train_env.envs)))
         for _ in t:
             # Collect a few steps using collect_policy and save to the replay buffer.
@@ -223,9 +230,10 @@ if __name__ == '__main__':
     parser.add_argument("--eval_interval", type=int, default=1000)
     parser.add_argument("--save_interval", type=int, default=1000)
     parser.add_argument("--n_parallels", type=int, default=1)
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_atoms", type=int, default=51)
     parser.add_argument("--min_q_value", type=int, default=-20)
     parser.add_argument("--max_q_value", type=int, default=20)
+    parser.add_argument("--train_in_browser", action='store_true')
     args = parser.parse_args()
     tf_agents.system.multiprocessing.handle_main(main, [args])
